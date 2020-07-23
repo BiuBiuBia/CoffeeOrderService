@@ -1,4 +1,4 @@
-package servlet.order;
+package servlet.rbac;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -18,16 +18,16 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 /**
- * Servlet implementation class GetOrderListByUserId
+ * Servlet implementation class GetAddrListByUserId
  */
-@WebServlet("/api/ordermanage/getOrderListByUserId")
-public class GetOrderListByUserId extends HttpServlet {
+@WebServlet("/api/usermanage/getAddrListByUserId")
+public class GetAddrListById extends HttpServlet {
 	private static final long serialVersionUID = 1L;
        
     /**
      * @see HttpServlet#HttpServlet()
      */
-    public GetOrderListByUserId() {
+    public GetAddrListById() {
         super();
         // TODO Auto-generated constructor stub
     }
@@ -37,7 +37,7 @@ public class GetOrderListByUserId extends HttpServlet {
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		// TODO Auto-generated method stub
-		doPost(request,response);
+		response.getWriter().append("Served at: ").append(request.getContextPath());
 	}
 
 	/**
@@ -45,48 +45,44 @@ public class GetOrderListByUserId extends HttpServlet {
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		// TODO Auto-generated method stub
-		request.setCharacterEncoding("UTF-8");
 		response.setContentType("text/json; charset=utf-8");
 		PrintWriter out = response.getWriter();
-		HttpSession session = request.getSession();
-		// BufferedReader reader = request.getReader();
-		// JsonObject requestJson = JsonParser.parseReader(reader).getAsJsonObject();
-		
-		Connection conn=null;
+		Connection conn = null;
 		try {
 			Class.forName("com.mysql.cj.jdbc.Driver");
-			conn=DriverManager.getConnection("jdbc:mysql://106.13.201.225:3306/coffee?serverTimezone=Asia/Shanghai", "coffee", "TklRpGi1");
-
-			String userId = (String)session.getAttribute("userId");
-			String sql="select * from orders where userId= ? order by createdTime desc";
+			conn = DriverManager.getConnection("jdbc:mysql://106.13.201.225:3306/coffee?serverTimezone=GMT","coffee","TklRpGi1");
+			String sql = "select * from user_addr where userId = ?";
 			PreparedStatement ps = conn.prepareStatement(sql);
-			ps.setString(1,userId);
+			HttpSession session = request.getSession();
+			ps.setString(1, (String)session.getAttribute("userId"));
 			ResultSet rs = ps.executeQuery();
-			JsonObject responseJson = new JsonObject();
-			JsonArray dataArray = new JsonArray();
-			while(rs.next()) {
-				JsonObject obj = new JsonObject();
-				obj.addProperty("orderId", rs.getString("orderId"));
-				obj.addProperty("createdTime", rs.getTimestamp("createdTime").toString());
-				obj.addProperty("status", rs.getString("status"));
-				obj.addProperty("addrId", rs.getString("addrId"));
-				obj.addProperty("isTakeOut", rs.getBoolean("isTakeOut"));
-				obj.addProperty("payment", rs.getString("payment"));
-				obj.addProperty("remark", rs.getString("remark"));
-				obj.addProperty("packingCharges", rs.getFloat("packingCharges"));
-				obj.addProperty("totalPrice", rs.getFloat("totalPrice"));
-				obj.addProperty("deliveryFee", rs.getFloat("deliveryFee"));
-				dataArray.add(obj);
+			JsonArray jsonArray = new JsonArray();
+			JsonObject jsonobj2 = new JsonObject();
+			while(rs.next()){
+				JsonObject jsonobj = new JsonObject();
+				jsonobj.addProperty("address",rs.getString("address"));
+				jsonobj.addProperty("userId",rs.getString("userId"));
+				jsonobj.addProperty("id",rs.getString("id"));
+				jsonobj.addProperty("provence",rs.getString("provence"));
+				jsonobj.addProperty("city",rs.getString("city"));
+				jsonobj.addProperty("street",rs.getString("street"));
+				jsonobj.addProperty("zipcode",rs.getString("zipcode"));
+				jsonobj.addProperty("country",rs.getString("country"));
+				jsonobj.addProperty("isDefaultAddr",rs.getBoolean("isDefaultAddr"));
+				jsonobj.addProperty("receiver",rs.getString("receiver"));
+				jsonobj.addProperty("telephone",rs.getString("telephone"));
+				jsonArray.add(jsonobj);
 			}
 			rs.close();
-			responseJson.addProperty("success", true);
-			responseJson.addProperty("msg","订单记录获取成功");
-			responseJson.add("data",dataArray);
+			jsonobj2.addProperty("success",true);
+			jsonobj2.add("data", jsonArray);
 			out = response.getWriter();
-			out.print(responseJson);
+			out.print(jsonobj2);
+			
 			conn.close();
-		}catch(SQLException | ClassNotFoundException e) {
+		} catch (SQLException | ClassNotFoundException e) {
 			e.printStackTrace();
+			/* 处理执行结果 */
 			JsonObject responseJson = new JsonObject();
 			responseJson.addProperty("success",false);
 			responseJson.addProperty("msg", e.getMessage());
@@ -98,4 +94,5 @@ public class GetOrderListByUserId extends HttpServlet {
 			}
 		}
 	}
+
 }

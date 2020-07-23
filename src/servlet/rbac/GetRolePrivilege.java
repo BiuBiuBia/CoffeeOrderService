@@ -3,12 +3,11 @@ package servlet.rbac;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
-
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -16,41 +15,38 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 
 /**
- * Servlet implementation class regist
+ * Servlet implementation class GetRolePrivilege
  */
-@WebServlet("/api/usermanage/setPassword")
-public class SetPassword extends HttpServlet {
-	
+@WebServlet("/api/usermanage/getRolePri")
+public class GetRolePrivilege extends HttpServlet {
 	private static final long serialVersionUID = 1L;
        
     /**
      * @see HttpServlet#HttpServlet()
      */
-    public SetPassword() {
+    public GetRolePrivilege() {
         super();
         // TODO Auto-generated constructor stub
-       
     }
 
 	/**
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
 	 */
-    @Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-    	response.setCharacterEncoding("UTF-8");
-    	response.setHeader("Allow", "POST");
-    	response.sendError(405);
+		// TODO Auto-generated method stub
+		doPost(request,response);
 	}
-    
+
 	/**
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
 	 */
-    @Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-    	/* 设置响应头部 */
+		// TODO Auto-generated method stub
+		/* 设置响应头部 */
     	response.setCharacterEncoding("UTF-8");
 		response.setContentType("text/json; charset=utf-8");
 		PrintWriter out = response.getWriter();
@@ -65,36 +61,47 @@ public class SetPassword extends HttpServlet {
 		}		
 		String jsonStr = message.toString();
 		
-		
+		/* 处理请求内容为空的情况 */
+		if(jsonStr.isEmpty()) 
+		{
+			response.sendError(400);
+			return;
+		}
 		/* 解析JSON获取数据 */
 		JSONObject jsonObj = JSONObject.fromObject(jsonStr);
-		String userId = jsonObj.getString("userId");
-		String password = jsonObj.getString("password");
-		
+		String roleId = jsonObj.getString("roleId");
 		Connection conn = null;
-		Statement stmt = null;
 		try {
 			/* 连接数据库 */
 			Class.forName("com.mysql.cj.jdbc.Driver");
 			conn = DriverManager.getConnection("jdbc:mysql://106.13.201.225:3306/coffee?useSSL=false&serverTimezone=GMT","coffee","TklRpGi1");
-			stmt = conn.createStatement();
 			
-			/* 构建SQL语句 */
-			String sql = "UPDATE user SET password=? WHERE userId=?;";
-			PreparedStatement ps = conn.prepareStatement(sql);
+			/* 构建SQL语句, 通过roleId找到privilegeId*/	
+			String sql2 = "select privilegeId from privilege_role where roleId=?";
+			String sql3 = "select * from privilege where id=?";
+			PreparedStatement ps2 = conn.prepareStatement(sql2);
+			PreparedStatement ps3 = conn.prepareStatement(sql3);
+			ps2.setString(1, roleId);
+			ResultSet rs2 = ps2.executeQuery();
 			
-			ps.setString(1, password);
-			ps.setString(2, userId);
-			
-			
-			/* 执行SQL语句 */
-			ps.executeUpdate();
+			/* 执行SQL语句 ， 通过privilegeId找到对应的元组*/
+			JSONObject jsonobj = new JSONObject();
+			JSONArray jsonarray = new JSONArray();
+			while(rs2.next()) {
+				String privilegeId = rs2.getString("privilegeId");
+				ps3.setString(1,privilegeId);
+				ResultSet rs3 = ps3.executeQuery();
+				rs3.next();
+				JSONObject temp = new JSONObject();
+				temp.put("privilegeName", rs3.getString("name_zh"));
+				temp.put("privilegeId", rs3.getString("id"));
+				jsonarray.add(temp);
+			}
 			
 			/* 处理执行结果 */
-			JSONObject responseJson = new JSONObject();
-			responseJson.put("success", true);
-			responseJson.put("msg","修改成功");
-			out.println(responseJson);
+			jsonobj.put("permission", jsonarray);
+			jsonobj.put("success", true);
+			out.println(jsonobj);
 		} catch (SQLException e) {
 			e.printStackTrace();
 			/* 处理执行结果 */
@@ -112,11 +119,11 @@ public class SetPassword extends HttpServlet {
 		} finally {
 			/* 无论如何关闭连接 */
 			try {
-				stmt.close();
 				conn.close();
 			} catch (SQLException e) {
 				e.printStackTrace();
 			}
 		}	
 	}
+
 }

@@ -73,7 +73,6 @@ public class SetUserInfo extends HttpServlet {
 		JSONObject jsonObj = JSONObject.fromObject(jsonStr);
 		String userId = jsonObj.getString("userId");
 		String userName = jsonObj.getString("userName");
-		String password = jsonObj.getString("password");
 		String telephone = jsonObj.getString("telephone");
 		String email = jsonObj.getString("email");
 		JSONArray roles = jsonObj.getJSONArray("roles");
@@ -87,19 +86,18 @@ public class SetUserInfo extends HttpServlet {
 			stmt = conn.createStatement();
 			
 			/* 构建SQL语句  */
-			String sql1 = "UPDATE user SET userName=?, password=?, telephone=?, email=? WHERE userId=?;";
+			String sql1 = "UPDATE user SET userName=?, telephone=?, email=? WHERE userId=?;";
 			PreparedStatement ps1 = conn.prepareStatement(sql1);
 			ps1.setString(1, userName);
-			ps1.setString(2, password);
-			ps1.setString(3, telephone);
-			ps1.setString(4, email);
-			ps1.setString(5, userId);
+			ps1.setString(2, telephone);
+			ps1.setString(3, email);
+			ps1.setString(4, userId);
 			
 			String sql3 = "DELETE FROM role_user WHERE userId=?;";
 			PreparedStatement ps3 = conn.prepareStatement(sql3);
 			ps3.setString(1, userId);
 			
-			String sql2 = "INSERT INTO role_user(roleName, userId) VALUES(?, ?);";
+			String sql2 = "INSERT INTO role_user(roleId, userId) VALUES(?, ?);";
 			PreparedStatement ps2 = conn.prepareStatement(sql2);
 			ps2.setString(2, userId);
 			

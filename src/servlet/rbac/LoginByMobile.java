@@ -1,4 +1,4 @@
-package servlet.shoppingcart;
+package servlet.rbac;
 
 
 import java.io.BufferedReader;
@@ -7,7 +7,9 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -15,20 +17,21 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 /**
  * Servlet implementation class getUserInfo
  */
-@WebServlet("/api/shoppingcart/addShoppingCart")
-public class AddShoppingCart extends HttpServlet {
+@WebServlet("/api/usermanage/loginByMobile")
+public class LoginByMobile extends HttpServlet {
 	private static final long serialVersionUID = 1L;
        
     /**
      * @see HttpServlet#HttpServlet()
      */
-    public AddShoppingCart() {
+    public LoginByMobile() {
         super();
         // TODO Auto-generated constructor stub
     }
@@ -48,45 +51,58 @@ public class AddShoppingCart extends HttpServlet {
 		// TODO Auto-generated method stub
 		response.setContentType("text/json; charset=utf-8");
 		request.setCharacterEncoding("UTF-8");
+		response.setCharacterEncoding("UTF-8");
 		PrintWriter out = response.getWriter();
-		HttpSession session = request.getSession();
-		BufferedReader reader = request.getReader();
-		JsonObject requestJson = JsonParser.parseReader(reader).getAsJsonObject();
 		
 		Connection conn = null;
 		try {
-			Class.forName("com.mysql.cj.jdbc.Driver");
 			conn = DriverManager.getConnection("jdbc:mysql://106.13.201.225:3306/coffee?useSSL=false&serverTimezone=GMT","coffee","TklRpGi1");
 			
-			String userId = (String) session.getAttribute("userId");
-			float price = requestJson.get("price").getAsFloat();
-			String mealId = requestJson.get("mealId").getAsString();
-			int addend = requestJson.get("addend").getAsInt();
+			BufferedReader reader = request.getReader();
+			JsonObject requestJson = JsonParser.parseReader(reader).getAsJsonObject();
+			HttpSession session = request.getSession();
+			String VerificationCode_user = requestJson.get("code").getAsString();
+			String VerificationCode_session =(String)session.getAttribute("VerificationCode");
 			
-			String sql = "Insert Into user_meal(userId, mealId, quality, price) Values(?,?,?,?) ON DUPLICATE KEY "
-					+ "Update quality = quality + ?;";
-			PreparedStatement ps = conn.prepareStatement(sql);
-			ps.setString(1, userId);
-			ps.setString(2, mealId);
-			ps.setInt(3, addend);
-			ps.setFloat(4, price);
-			ps.setInt(5, addend);
+			JsonObject jsonobj = new JsonObject();
+			if(VerificationCode_user.equals(VerificationCode_session))
+			{
+				String privilegeSql = "SELECT name_en FROM privilege JOIN privilege_role ON privilege_role.privilegeId = privilege.id "
+						+ "JOIN role_user ON privilege_role.roleId = role_user.roleId WHERE userId = ?;";
+				PreparedStatement privilegePs = conn.prepareStatement(privilegeSql);
+				privilegePs.setString(1, (String)session.getAttribute("userId"));
+				ResultSet privilegeRs = privilegePs.executeQuery();
+				JsonArray privileges = new JsonArray();
+				while(privilegeRs.next()) {
+					privileges.add(privilegeRs.getString("name_en"));
+				}
+				privilegeRs.close();
 				
-			ps.executeUpdate();
+				session.setAttribute("login", true);
+				session.removeAttribute("VerificationCode");
+				session.setMaxInactiveInterval(-1); // 永不过时
+				session.setAttribute("privileges", privileges);
+				
+				jsonobj.add("privileges", privileges);
+				jsonobj.addProperty("success", true);
+				jsonobj.addProperty("msg", "登录成功");
+			}
+			else
+			{
+				jsonobj.addProperty("success", false);
+				jsonobj.addProperty("msg", "验证码错误");
+			}
 			
-			JsonObject responseJson = new JsonObject();
-			responseJson.addProperty("success", true);
-			responseJson.addProperty("msg","");
-			out.print(responseJson);
-			
-		} catch (SQLException | ClassNotFoundException e) {
-			e.printStackTrace();
+			out = response.getWriter();
+			out.println(jsonobj);
+		} catch (SQLException | IOException e) {
 			JsonObject responseJson = new JsonObject();
 			responseJson.addProperty("success",false);
 			responseJson.addProperty("msg", e.getMessage());
 			out.println(responseJson);
 			try {
 				conn.rollback();
+				conn.close();
 			} catch (SQLException e1) {
 				e1.printStackTrace();
 			}

@@ -15,8 +15,6 @@ import javax.servlet.http.HttpSession;
 
 import com.google.gson.JsonObject;
 
-import net.sf.json.JSONObject;
-
 /**
  * Servlet Filter implementation class loginFilter
  */
@@ -43,18 +41,37 @@ public class loginFilter implements Filter {
 		HttpServletRequest req = (HttpServletRequest)request;
 		HttpSession session = req.getSession();
 		response.setContentType("text/json; charset=utf-8");
+		
 		String uri = req.getRequestURI();
-		if(session.getAttribute("userId")==null && !uri.contains("/login") && !uri.contains("/regist")) {
-			PrintWriter out = response.getWriter();
-			JsonObject jsonobj = new JsonObject();
-			jsonobj.addProperty("success", false);
-			jsonobj.addProperty("msg", "用户未登录");
-			jsonobj.addProperty("errorcode", 403);
-			out = response.getWriter();
-			out.println(jsonobj);
+		
+		if(session.getAttribute("login") != null && (boolean)session.getAttribute("login") == true) {
+			chain.doFilter(request, response);
+			return;
 		}
-		else
-		chain.doFilter(request, response);
+		String whiteList[] = {
+				"/login",
+				"/regist",
+				"getVerificationCode",
+				"retrievePassword",
+				"getMealBySort",
+				"getAllMeal",
+				"downloadImg"
+
+		};
+		for(String item:whiteList) {
+			if(uri.contains(item)) {
+				chain.doFilter(request, response);
+				return;
+			}
+		}
+		/* 提示未登录 */
+		PrintWriter out = response.getWriter();
+		JsonObject jsonobj = new JsonObject();
+		jsonobj.addProperty("success", false);
+		jsonobj.addProperty("msg", "用户未登录");
+		jsonobj.addProperty("errorcode", 403);
+		out = response.getWriter();
+		out.println(jsonobj);
 	}
 
 	/**

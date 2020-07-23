@@ -1,5 +1,4 @@
-﻿package servlet.rbac;
-
+package servlet.rbac;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -7,30 +6,30 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Statement;
+
 import javax.servlet.ServletException;
 import javax.servlet.ServletInputStream;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
 import net.sf.json.JSONObject;
 
-import java.util.UUID;
 /**
- * Servlet implementation class regist
+ * Servlet implementation class RetrievePassword
  */
-@WebServlet("/api/usermanage/regist")
-public class Regist extends HttpServlet {
+@WebServlet("/api/usermanage/retrievePassword")
+public class RetrievePassword extends HttpServlet {
 	private static final long serialVersionUID = 1L;
        
     /**
      * @see HttpServlet#HttpServlet()
      */
-    public Regist() {
+    public RetrievePassword() {
         super();
         // TODO Auto-generated constructor stub
-       
     }
 
 	/**
@@ -41,16 +40,19 @@ public class Regist extends HttpServlet {
     	response.setHeader("Allow", "POST");
     	response.sendError(405);
 	}
+
 	/**
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		// TODO Auto-generated method stub
 		response.setContentType("text/json; charset=utf-8");
 		PrintWriter out = response.getWriter();
 		Connection conn = null;
 		try {
-			ServletInputStream is = request.getInputStream();
+			Class.forName("com.mysql.cj.jdbc.Driver");
+			conn = DriverManager.getConnection("jdbc:mysql://106.13.201.225:3306/coffee?serverTimezone=GMT","coffee","TklRpGi1");
+			ServletInputStream is;
+			is = request.getInputStream();
 			int nRead = 1;
 			int nTotalRead = 0;
 			byte[] bytes = new byte[10240];
@@ -60,49 +62,28 @@ public class Regist extends HttpServlet {
 					nTotalRead = nTotalRead + nRead;
 			}
 			String str = new String(bytes, 0, nTotalRead, "utf-8");
+			
+			HttpSession session = request.getSession();
 			JSONObject jsonObj = JSONObject.fromObject(str);
-			if(!jsonObj.has("telephone")) {
-				jsonObj.put("telephone", "");
-			}
-			if(!jsonObj.has("email")) {
-				jsonObj.put("email", "");
-			}
-			Class.forName("com.mysql.cj.jdbc.Driver");
-			conn = DriverManager.getConnection("jdbc:mysql://106.13.201.225:3306/coffee?useSSL=false&serverTimezone=GMT","coffee","TklRpGi1");
-			Statement stmt = conn.createStatement();
-			String userId = UUID.randomUUID().toString();
 			String password = jsonObj.getString("password");
-			String telephone = jsonObj.getString("telephone");
-			String email = jsonObj.getString("email");
-			String userName = jsonObj.getString("userName");
-			String sql = "insert into user(userId, telephone, email, password, userName) values(?,?,?,?,?)";
-			PreparedStatement ps = conn.prepareStatement(sql);
-			ps.setString(1, userId);
-			ps.setString(2, telephone);
-			ps.setString(3, email);
-			ps.setString(4, password);
-			ps.setString(5, userName);
-			try {
-				int rowCount = ps.executeUpdate();
-				JSONObject jsonobj = new JSONObject();
-				if(rowCount>0){
-					jsonobj.put("success",true);
-					jsonobj.put("msg","注册成功");
-				}
-				out = response.getWriter();
-				out.println(jsonobj);
-				stmt.close();
-				conn.close();
+			String VerificationCode_user = jsonObj.getString("code");
+			String VerificationCode_session =(String)session.getAttribute("VerificationCode");
+			JSONObject jsonobj = new JSONObject();
+			if(VerificationCode_user.equals(VerificationCode_session))
+			{
+				String sql = "Update user Set password=? Where userId = ?";
+				PreparedStatement ps = conn.prepareStatement(sql);
+				ps.setString(1, password);
+				ps.setNString(2, (String)session.getAttribute("userId"));
+				ps.executeUpdate();
+				session.invalidate();
+				jsonobj.put("success", true);
+				jsonobj.put("msg", "已更新密码");
+			} else {
+				jsonobj.put("success", false);
+				jsonobj.put("msg", "验证码错误");
 			}
-			catch(Exception e) {
-				JSONObject jsonobj = new JSONObject();
-				jsonobj.put("success",false);
-				jsonobj.put("msg",e.getMessage());
-				out = response.getWriter();
-				out.println(jsonobj);
-				stmt.close();
-				conn.close();
-			}
+			out.print(jsonobj);
 		} catch (SQLException | ClassNotFoundException e) {
 			e.printStackTrace();
 		}

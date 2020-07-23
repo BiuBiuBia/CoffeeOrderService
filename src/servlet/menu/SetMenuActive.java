@@ -1,4 +1,4 @@
-package servlet.order;
+package servlet.menu;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -7,9 +7,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Statement;
+
 import javax.servlet.ServletException;
-import javax.servlet.ServletInputStream;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -18,19 +17,17 @@ import javax.servlet.http.HttpServletResponse;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import net.sf.json.JSONObject;
-
 /**
- * Servlet implementation class FinishOrder
+ * Servlet implementation class SetMenuActive
  */
-@WebServlet("/api/ordermanage/setOrderStatus")
-public class FinishOrder extends HttpServlet {
+@WebServlet("/api/menu/setMenuActive")
+public class SetMenuActive extends HttpServlet {
 	private static final long serialVersionUID = 1L;
        
     /**
      * @see HttpServlet#HttpServlet()
      */
-    public FinishOrder() {
+    public SetMenuActive() {
         super();
         // TODO Auto-generated constructor stub
     }
@@ -40,42 +37,44 @@ public class FinishOrder extends HttpServlet {
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		// TODO Auto-generated method stub
-		doPost(request,response);
+		response.getWriter().append("Served at: ").append(request.getContextPath());
 	}
 
 	/**
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		// TODO Auto-generated method stub
 		response.setContentType("text/json; charset=utf-8");
-		request.setCharacterEncoding("UTF-8");
+		PrintWriter out = response.getWriter();
 		BufferedReader reader = request.getReader();
 		JsonObject requestJson = JsonParser.parseReader(reader).getAsJsonObject();
-		PrintWriter out=response.getWriter();
+		String menuId = requestJson.get("menuId").getAsString();
 		
-		Connection conn=null;
+		Connection conn = null;
 		try {
 			Class.forName("com.mysql.cj.jdbc.Driver");
-			conn=DriverManager.getConnection("jdbc:mysql://106.13.201.225:3306/coffee?serverTimezone=Asia/Shanghai","coffee","TklRpGi1");
-			/*以创建订单时返回的orderId为传入参数*/
-			String orderId = requestJson.get("orderId").getAsString();
-			String targetStatus = requestJson.get("targetStatus").getAsString();
-			String sql="Update orders SET status = ? Where orderId= ?;";
-			PreparedStatement ps=conn.prepareStatement(sql);
-			ps.setString(1, targetStatus);
-			ps.setString(2, orderId);
-			ps.executeUpdate();
-			ps.close();
+			conn = DriverManager.getConnection("jdbc:mysql://106.13.201.225:3306/coffee?serverTimezone=GMT","coffee","TklRpGi1");
+			String sql1 = "Update menu Set active = false Where active = true;";
+			String sql2 = "Update menu Set active = true Where menuId = ?;";
+			PreparedStatement ps1 = conn.prepareStatement(sql1);
+			PreparedStatement ps2 = conn.prepareStatement(sql2);
+			ps1.executeUpdate();
+			ps2.setString(1, menuId);
+			ps2.executeUpdate();
 			
-			JsonObject jsonobj=new JsonObject();
+			JsonObject jsonobj = new JsonObject();
+			
 			jsonobj.addProperty("success", true);
-			jsonobj.addProperty("msg","订单状态修改成功");
-			out.println(jsonobj);
-		}catch(SQLException e) {
+			jsonobj.addProperty("msg", "");
+			out = response.getWriter();
+			out.print(jsonobj);
+			
+			conn.close();
+		} catch (SQLException | ClassNotFoundException e) {
 			e.printStackTrace();
+			/* 处理执行结果 */
 			JsonObject responseJson = new JsonObject();
-			responseJson.addProperty("success", false);
+			responseJson.addProperty("success",false);
 			responseJson.addProperty("msg", e.getMessage());
 			out.println(responseJson);
 			try {
@@ -83,14 +82,7 @@ public class FinishOrder extends HttpServlet {
 			} catch (SQLException e1) {
 				e1.printStackTrace();
 			}
-		}catch(ClassNotFoundException e) {
-			e.printStackTrace();
-		}finally {
-			try {
-				conn.close();
-			} catch (SQLException e) {
-				e.printStackTrace();
-			}
 		}
 	}
+
 }
